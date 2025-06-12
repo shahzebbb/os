@@ -2,26 +2,26 @@ BITS 16
 org 0x7C00              ; BIOS loads bootloader here
 
 main:
-    ; Initialise ds and es segments to 0
+    ; Initialise stack
     mov ax, 0x7C00
-    mov ss, ax
+    mov sp, ax
+
+    ; Initialise other ds, ss and es segments to 0
     XOR ax, ax          
     MOV ds, ax
+    MOV ss, ax
+    MOV es, ax
 
-    mov ax, 0x0500
-    mov es, ax
+    ; Save drive 
+    mov [drive_number], dl
 
-    mov [ebr_drive_number], dl
-
+    ; Print a message to show you are inside the bootloader
     MOV si, message             ; Load the address of the string into SI
     CALL print_string
 
-    MOV ax, 1                   ; Load sector 1
-    CALL convert_lba_to_chs
-
-    ; Set disk read destination memory to ES:BX = 0x0500:0000
-    MOV bx, 0x0000
-    MOV dl, [ebr_drive_number]
+    ; Load sector 1 from disk
+    MOV ax, 1                   ; Define which sector to load
+    MOV bx, 0x7E00              ; Disk contents will be saved to 0x7E00
     CALL disk_read
 
     CLI
@@ -42,6 +42,8 @@ main:
 ;   cl = sector
 convert_lba_to_chs:
     PUSH ax
+    PUSH bx
+    PUSH dx
 
     MOV bx, 18      ; Sectors Per Track = 18 (Hardcoded for now)
     XOR dx, dx      
@@ -56,11 +58,19 @@ convert_lba_to_chs:
     MOV ch, al      ; Cylinder
     MOV dh, dl      ; Head
 
+    POP dx
+    POP bx
     POP ax
     RET
 
+; Function to read from disk.
+; Inputs:
+;   ax - saves which sector to load in LBA addressing
+;   es:bx - defines where to store the read in memory
 disk_read:
-    mov si, 3
+    CALL convert_lba_to_chs
+    MOV dl, [drive_number]
+    mov si, 3   ; Iterator to try at most 3 times
 
 .try_read:
     ; Setup BIOS disk read
@@ -81,7 +91,7 @@ disk_read:
 .success:
     ; Sector loaded successfully
     popa
-    JMP 0x0500:0000        ; Or continue to next logic
+    JMP 0x0000:0x7E00       ; Or continue to next logic
 
 .disk_error:
     MOV si, disk_error_message
@@ -107,7 +117,7 @@ print_string:
 
 message db 'Inside the bootloader...', 0x0D, 0x0A, 0
 disk_error_message db  'Error reading disk', 0x0D, 0x0A, 0
-ebr_drive_number db 0
+drive_number db 0
 
 times 510 - ($ - $$) db 0  ; pad to 510 bytes
 dw 0xAA55                  ; boot signature

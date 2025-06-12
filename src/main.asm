@@ -1,10 +1,7 @@
 BITS 16
-ORG 0x5000
+ORG 0x7E00
 
 main:
-    MOV si, message             ; Load the address of the string into SI
-    CALL print_string
-
     MOV si, message             ; Load the address of the string into SI
     CALL print_string
 
