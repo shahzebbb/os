@@ -16,6 +16,7 @@ print_string:
     CMP al, 0           ; Is the character NULL? Sets zero flag
     JE .done            ; If zero flag is set go to done
     
+    MOV bh, 0           ; Tells you what page to print to
     MOV ah, 0x0E        ; Tells bios to give a teletype output
     INT 0x10            ; Interrupt prints the charcter stored in AL
     JMP print_string    ; Go to next character
@@ -23,7 +24,7 @@ print_string:
 .done:
     RET                 ; Return back to caller
 
-message db 'Inside the bootloader...\n', 0
+message db 'Inside the bootloader...', 0
 
 times 510 - ($ - $$) db 0  ; pad to 510 bytes
 dw 0xAA55                  ; boot signature
