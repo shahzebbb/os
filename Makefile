@@ -9,15 +9,19 @@ IMG     = $(BUILD)/bootloader.img
 all: $(IMG)
 
 # === BUILD BOOTLOADER ===
-$(BIN): $(SRC)/bootloader.asm
+$(BIN):
 	@mkdir -p $(BUILD)
 	$(NASM) -f bin $(SRC)/bootloader.asm -o $(BIN)
 
+$(BUILD)/main.bin:
+	@mkdir -p $(BUILD)
+	$(NASM) -f bin $(SRC)/main.asm -o $(BUILD)/main.bin
 
 # === CREATE DISK IMAGE ===
-$(IMG): $(BIN)
+$(IMG): $(BIN) $(BUILD)/main.bin
 	dd if=/dev/zero of=$(IMG) bs=512 count=2880
 	dd if=$(BIN) of=$(IMG) conv=notrunc
+	dd if=$(BUILD)/main.bin of=$(IMG) bs=512 seek=1 conv=notrunc
 
 # === RUN QEMU ===
 run: $(IMG)

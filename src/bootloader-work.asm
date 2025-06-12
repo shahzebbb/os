@@ -4,90 +4,49 @@ org 0x7C00              ; BIOS loads bootloader here
 main:
     ; Initialise ds and es segments to 0
     mov ax, 0x7C00
-    mov ss, ax
+    mov sp, ax
+
     XOR ax, ax          
     MOV ds, ax
+    MOV ss, ax
 
-    mov ax, 0x0500
-    mov es, ax
-
-    mov [ebr_drive_number], dl
+   
 
     MOV si, message             ; Load the address of the string into SI
     CALL print_string
 
-    MOV ax, 1                   ; Load sector 1
-    CALL convert_lba_to_chs
+
+    MOV ch, 0
+    MOV dh, 0
+    MOV cl, 2
 
     ; Set disk read destination memory to ES:BX = 0x0500:0000
     MOV bx, 0x0000
-    MOV dl, [ebr_drive_number]
-    CALL disk_read
 
-    CLI
-    HLT
-
-    
-
-; Function to convert LBA to CHS addresses using the following formulas:
-; Cylinder = LBA / (HPC × SPT)
-; Head     = (LBA / SPT) % HPC
-; Sector   = (LBA % SPT) + 1
-; 
-; Inputs:
-;   ax = LBA
-; Outputs:
-;   ch = cylinder
-;   dh = head
-;   cl = sector
-convert_lba_to_chs:
-    PUSH ax
-
-    MOV bx, 18      ; Sectors Per Track = 18 (Hardcoded for now)
-    XOR dx, dx      
-    DIV bx          ; AX = LBA / SPT, DX =  LBA % SPT
-    MOV cl, dl
-    INC cl
-
-    MOV bx, 2       ; Heads Per Cylinder = 2 (Hardcoded for now)
-    XOR dx, dx
-    DIV bx          ; AX = LBA / (SPT X HPC) DX = (LBA / SPT) % HPC
-
-    MOV ch, al      ; Cylinder
-    MOV dh, dl      ; Head
-
-    POP ax
-    RET
-
-disk_read:
-    mov si, 3
-
-.try_read:
-    ; Setup BIOS disk read
     MOV ah, 0x02
     MOV al, 1                   ; Read 1 sector
 
     pusha
     INT 0x13                    ; Call bios to read disk
 
-    JNC .success                ; If read was successful
+    JNC success                ; If read was successful
 
-    popa
-    DEC si                      
-    JNZ .try_read               ; Try again if read fails
+    popa          
 
-    JMP .disk_error
+    JMP disk_error
 
-.success:
+    HLT
+
+
+success:
     ; Sector loaded successfully
     popa
     JMP 0x0500:0000        ; Or continue to next logic
 
-.disk_error:
+disk_error:
     MOV si, disk_error_message
     CALL print_string
     RET
-
 
 
 print_string:
@@ -107,7 +66,6 @@ print_string:
 
 message db 'Inside the bootloader...', 0x0D, 0x0A, 0
 disk_error_message db  'Error reading disk', 0x0D, 0x0A, 0
-ebr_drive_number db 0
 
 times 510 - ($ - $$) db 0  ; pad to 510 bytes
 dw 0xAA55                  ; boot signature
