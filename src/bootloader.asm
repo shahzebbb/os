@@ -1,7 +1,38 @@
 BITS 16
 org 0x7C00              ; BIOS loads bootloader here
 
-main:
+
+;
+; FAT12 header
+; 
+jmp short start
+nop
+
+bpb_oem:                         db 'MSWIN4.1'
+bpb_bytes_per_sector:            dw 512
+bpb_sectors_per_cluster:         db 1
+bpb_reserved_sectors:            dw 1
+bpb_fat_count:                   db 2
+bpb_root_dir_count:              dw 0x0E0
+bpb_total_sectors:               dw 2880
+bpb_media_descriptor_type:       db 0x0F0
+bpb_sectors_per_fat:             dw 9       
+bpb_sectors_per_track:           dw 18          
+bpb_heads_count:                 dw 2           ; Heads per cylinder
+bpb_hidden_sectors:              dd 0
+bpb_large_sector_count:          dd 0
+
+; Extended Boot Record
+ebr_drive_number:                db 0
+                                 db 0
+ebr_signature:                   db 0
+ebr_volume_id:                   db 0x12, 0x34, 0x56, 0x78
+ebr_volume_label:                db 'TOY OS     '
+ebr_system_id:                   db 'FAT12   '
+
+
+
+start:
     ; Initialise stack
     mov ax, 0x7C00
     mov sp, ax
@@ -13,7 +44,7 @@ main:
     MOV es, ax
 
     ; Save drive 
-    mov [drive_number], dl
+    mov [ebr_drive_number], dl
 
     ; Print a message to show you are inside the bootloader
     MOV si, message             ; Load the address of the string into SI
@@ -45,20 +76,21 @@ convert_lba_to_chs:
     PUSH bx
     PUSH dx
 
-    MOV bx, 18      ; Sectors Per Track = 18 (Hardcoded for now)
+    MOV bx, [bpb_sectors_per_track] 
     XOR dx, dx      
-    DIV bx          ; AX = LBA / SPT, DX =  LBA % SPT
+    DIV bx                               ; AX = LBA / SPT, DX =  LBA % SPT
     MOV cl, dl
-    INC cl
+    INC cl                               ; Sector
 
-    MOV bx, 2       ; Heads Per Cylinder = 2 (Hardcoded for now)
+    MOV bx, [bpb_heads_count] 
     XOR dx, dx
-    DIV bx          ; AX = LBA / (SPT X HPC) DX = (LBA / SPT) % HPC
+    DIV bx                              ; AX = LBA / (SPT X HPC) DX = (LBA / SPT) % HPC
 
-    MOV ch, al      ; Cylinder
-    MOV dh, dl      ; Head
+    MOV ch, al                          ; Cylinder
+    MOV dh, dl                          ; Head
 
-    POP dx
+    POP ax
+    MOV dl, al
     POP bx
     POP ax
     RET
@@ -69,7 +101,7 @@ convert_lba_to_chs:
 ;   es:bx - defines where to store the read in memory
 disk_read:
     CALL convert_lba_to_chs
-    MOV dl, [drive_number]
+    MOV dl, [ebr_drive_number]
     mov si, 3   ; Iterator to try at most 3 times
 
 .try_read:
@@ -115,9 +147,8 @@ print_string:
 .done:
     RET                 ; Return back to caller
 
-message db 'Inside the bootloader...', 0x0D, 0x0A, 0
-disk_error_message db  'Error reading disk', 0x0D, 0x0A, 0
-drive_number db 0
+message:            db 'Inside the bootloader...', 0x0D, 0x0A, 0
+disk_error_message: db  'Error reading disk', 0x0D, 0x0A, 0
 
 times 510 - ($ - $$) db 0  ; pad to 510 bytes
 dw 0xAA55                  ; boot signature
