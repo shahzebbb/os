@@ -50,6 +50,7 @@ start:
     MOV si, message             ; Load the address of the string into SI
     CALL print_string
 
+    CALL read_root_dir
     ; Load sector 1 from disk
     MOV ax, 1                   ; Define which sector to load
     MOV cl, 1                   ; Define how many sectors to load
@@ -60,7 +61,41 @@ start:
     CLI
     HLT
 
-    
+; Function to read the root directory on FAT12.
+; The root directory stores information on each file on the disk
+; This functions loads all bpb_root_dir_count entries into memory.
+; The formula to calculate LBA of root dir is:
+;   LBA = reserved_sector + fat_count * sectors_per_fat
+; The formula to calculate the size of root_dir in sectors is:
+;   size = (root_dir_count * 32) / bytes_per_sector
+; Outputs:
+read_root_dir:
+    ; First we will calculate the LBA of the root_dir
+    MOV ax, [bpb_sectors_per_fat] 
+    MOV bl, [bpb_fat_count]
+    XOR bh, bh 
+
+    MUL bx                               ; AX = fat_count * sectors_per_fat
+    ADD ax, [bpb_reserved_sectors]       ; AX = LBA = reserved_sector + fat_count * sectors_per_fat
+
+    PUSH ax
+
+    ; Now we will calulate the number of sectors the root_dir holds
+    MOV ax, [bpb_root_dir_count]
+    SHL ax, 5                              ; AX *= 32, AX = root_dir_count * 32
+    XOR dx, dx
+    DIV word [bpb_bytes_per_sector]
+
+    TEST dx, dx                            ; if dx != 0, add 1
+    JZ .read
+    INC ax                                 ; Meaning we have a sector partially filled which is why need to add 1
+
+.read:
+    ; Now we finally call read_sector to read the root_dir into memory
+    MOV cl, al                             ; Define how many sectors to load
+    POP ax                                 ; Define which sector to load
+    MOV bx, buffer                         ; Disk contents will be saved to 0x7E00
+    CALL read_sector
 
 ; Function to convert LBA to CHS addresses using the following formulas:
 ; Cylinder = LBA / (HPC × SPT)
@@ -152,3 +187,4 @@ disk_error_message: db  'Error reading disk', 0x0D, 0x0A, 0
 
 times 510 - ($ - $$) db 0  ; pad to 510 bytes
 dw 0xAA55                  ; boot signature
+buffer:
