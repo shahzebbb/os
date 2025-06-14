@@ -52,8 +52,10 @@ start:
 
     ; Load sector 1 from disk
     MOV ax, 1                   ; Define which sector to load
+    MOV cl, 1                   ; Define how many sectors to load
     MOV bx, 0x7E00              ; Disk contents will be saved to 0x7E00
-    CALL disk_read
+    CALL read_sector
+    JMP 0x0000:0x7E00
 
     CLI
     HLT
@@ -72,49 +74,49 @@ start:
 ;   dh = head
 ;   cl = sector
 convert_lba_to_chs:
-    PUSH ax
     PUSH bx
     PUSH dx
 
-    MOV bx, [bpb_sectors_per_track] 
     XOR dx, dx      
-    DIV bx                               ; AX = LBA / SPT, DX =  LBA % SPT
+    DIV word [bpb_sectors_per_track]     ; AX = LBA / SPT, DX =  LBA % SPT
     MOV cl, dl
     INC cl                               ; Sector
 
-    MOV bx, [bpb_heads_count] 
     XOR dx, dx
-    DIV bx                              ; AX = LBA / (SPT X HPC) DX = (LBA / SPT) % HPC
+    DIV word [bpb_heads_count]           ; AX = LBA / (SPT X HPC) DX = (LBA / SPT) % HPC
 
     MOV ch, al                          ; Cylinder
+    SHL ah, 6
+    OR cl, ah                           ; put upper 2 bits of cylinder in CL
+
     MOV dh, dl                          ; Head
 
     POP ax
     MOV dl, al
     POP bx
-    POP ax
     RET
 
-; Function to read from disk.
+; Function to read a sector from FAT12 disk.
 ; Inputs:
 ;   ax - saves which sector to load in LBA addressing
 ;   es:bx - defines where to store the read in memory
-disk_read:
+read_sector:
+    PUSH cx
     CALL convert_lba_to_chs
+    POP ax                  ; Now AL = Number of sectors to read
     MOV dl, [ebr_drive_number]
     mov si, 3   ; Iterator to try at most 3 times
 
 .try_read:
     ; Setup BIOS disk read
     MOV ah, 0x02
-    MOV al, 1                   ; Read 1 sector
 
     pusha
     INT 0x13                    ; Call bios to read disk
 
     JNC .success                ; If read was successful
 
-    popa
+    POPA
     DEC si                      
     JNZ .try_read               ; Try again if read fails
 
@@ -122,15 +124,13 @@ disk_read:
 
 .success:
     ; Sector loaded successfully
-    popa
-    JMP 0x0000:0x7E00       ; Or continue to next logic
+    POPA
+    RET     
 
 .disk_error:
     MOV si, disk_error_message
     CALL print_string
     RET
-
-
 
 print_string:
     MOV al, [si]        ; Load character in SI to AL and increments SI
