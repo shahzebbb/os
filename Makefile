@@ -18,12 +18,12 @@ $(IMG): binaries
 	dd if=/dev/zero of=$(IMG) bs=512 count=2880 status=none
 	mkfs.fat -F 12 $(IMG) 
 	dd if=$(BIN) of=$(IMG) conv=notrunc status=none
-	mcopy -i $(IMG) $(BUILD)/start.bin "::kernel.bin"
+	mcopy -i $(IMG) $(BUILD)/start.bin "::START.bin"
 	
 
 # === RUN QEMU ===
 run: $(IMG)
-	$(QEMU) -fda $(IMG)
+	$(QEMU) -drive format=raw,file=$(IMG),if=floppy
 
 # === CLEAN UP ===
 clean:

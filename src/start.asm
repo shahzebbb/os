@@ -2,7 +2,7 @@ BITS 16
 ORG 0x0000
 
 main:
-    MOV si, message             ; Load the address of the string into SI
+    MOV si, message_hello             ; Load the address of the string into SI
     CALL print_string
 
     CLI
@@ -23,5 +23,4 @@ print_string:
 .done:
     RET                 ; Return back to caller
 
-message db 'Inside starter...', 0x0D, 0x0A, 0
-times 510 - ($ - $$) db 0  ; pad to 510 bytes
+message_hello db 'Inside starter...', 0x0D, 0x0A, 0
