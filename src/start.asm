@@ -1,5 +1,5 @@
 BITS 16
-ORG 0x7E00
+ORG 0x0000
 
 main:
     MOV si, message             ; Load the address of the string into SI
@@ -23,5 +23,5 @@ print_string:
 .done:
     RET                 ; Return back to caller
 
-message db 'Inside sector 1...', 0x0D, 0x0A, 0
+message db 'Inside starter...', 0x0D, 0x0A, 0
 times 510 - ($ - $$) db 0  ; pad to 510 bytes

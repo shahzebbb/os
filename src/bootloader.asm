@@ -51,12 +51,16 @@ start:
     CALL print_string
 
     CALL read_root_dir
+
+    MOV si, file_kernel_bin      ; filename to search
+    MOV cx, 11                   ; FAT name is 11 bytes
+    CALL read_file
     ; Load sector 1 from disk
-    MOV ax, 1                   ; Define which sector to load
-    MOV cl, 1                   ; Define how many sectors to load
-    MOV bx, 0x7E00              ; Disk contents will be saved to 0x7E00
-    CALL read_sector
-    JMP 0x0000:0x7E00
+    ; MOV ax, 1                   ; Define which sector to load
+    ; MOV cl, 1                   ; Define how many sectors to load
+    ; MOV bx, 0x7E00              ; Disk contents will be saved to 0x7E00
+    ; CALL read_sector
+    ; JMP 0x0000:0x7E00
 
     CLI
     HLT
@@ -94,8 +98,68 @@ read_root_dir:
     ; Now we finally call read_sector to read the root_dir into memory
     MOV cl, al                             ; Define how many sectors to load
     POP ax                                 ; Define which sector to load
-    MOV bx, buffer                         ; Disk contents will be saved to 0x7E00
+    MOV bx, root_dir_start                 ; Disk contents will be saved to 0x7E00
     CALL read_sector
+    RET
+
+
+; Function to read the root directory on FAT12.
+; The root directory stores information on each file on the disk
+; This functions loads all bpb_root_dir_count entries into memory.
+; The formula to calculate LBA of root dir is:
+;   LBA = reserved_sector + fat_count * sectors_per_fat
+; The formula to calculate the size of root_dir in sectors is:
+;   size = (root_dir_count * 32) / bytes_per_sector
+; Outputs:
+read_file:
+    MOV ax, [bpb_root_dir_count]
+    SHL ax, 5                              ; AX *= 32, AX = root_dir_count * 32
+    XOR dx, dx
+    DIV word [bpb_bytes_per_sector]
+    TEST dx, dx                            ; if dx != 0, add 1
+    JZ .calculate_root_dir_end
+    INC ax    
+
+.calculate_root_dir_end:
+    SHL ax, 9                              ; AX *= 512
+    ADD ax, root_dir_start
+    MOV di, root_dir_start
+
+.loop_entries:
+    CMP di, ax     ; have we reached the end?
+    JAE .file_not_found     ; if so, exit
+
+    PUSH di
+    PUSH si
+    PUSH cx
+
+    REPE cmpsb
+
+    POP cx
+    POP si
+    POP di
+    JZ .file_found
+
+    PUSH si
+    mov si, message
+    call print_string
+    POP si
+
+    ADD di, 32
+    JMP .loop_entries
+
+.file_found:
+    mov si, msg_file_found
+    call print_string
+    RET
+
+.file_not_found:
+    mov si, msg_file_not_found
+    call print_string
+    RET
+
+
+
 
 ; Function to convert LBA to CHS addresses using the following formulas:
 ; Cylinder = LBA / (HPC × SPT)
@@ -134,6 +198,7 @@ convert_lba_to_chs:
 ; Function to read a sector from FAT12 disk.
 ; Inputs:
 ;   ax - saves which sector to load in LBA addressing
+;   cl - saves number of sectors to load
 ;   es:bx - defines where to store the read in memory
 read_sector:
     PUSH cx
@@ -182,9 +247,12 @@ print_string:
 .done:
     RET                 ; Return back to caller
 
-message:            db 'Inside the bootloader...', 0x0D, 0x0A, 0
-disk_error_message: db  'Error reading disk', 0x0D, 0x0A, 0
+message:                   db 'Inside the bootloader...', 0x0D, 0x0A, 0
+disk_error_message:        db  'Error reading disk', 0x0D, 0x0A, 0
+file_kernel_bin:           db 'KERNEL  BIN'
+msg_file_found:            db 'File found',  0x0D, 0x0A, 0
+msg_file_not_found:        db 'File not found!!',  0x0D, 0x0A, 0
 
 times 510 - ($ - $$) db 0  ; pad to 510 bytes
 dw 0xAA55                  ; boot signature
-buffer:
+root_dir_start:
