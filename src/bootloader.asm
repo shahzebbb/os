@@ -333,7 +333,7 @@ convert_cluster_to_lba:
 
 message:                   db 'Inside the bootloader...', 0x0D, 0x0A, 0
 disk_error_message:        db 'Error reading disk', 0x0D, 0x0A, 0
-file_kernel_bin:           db 'START   BIN'
+file_kernel_bin:           db 'KERNEL  BIN'
 msg_file_found:            db 'File found',  0x0D, 0x0A, 0
 msg_file_not_found:        db 'File not found!!',  0x0D, 0x0A, 0
 
@@ -341,8 +341,8 @@ file_cluster:              dw 0
 root_dir_start             dw 0
 root_dir_size              db 0
 
-FILE_LOAD_SEGMENT          equ 0x2000
-FILE_LOAD_OFFSET           equ 0
+FILE_LOAD_SEGMENT          equ 0x0
+FILE_LOAD_OFFSET           equ 0x1000
 
 
 times 510 - ($ - $$) db 0  ; pad to 510 bytes
