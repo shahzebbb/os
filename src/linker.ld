@@ -4,7 +4,7 @@ OUTPUT_FORMAT("binary")
 
 SECTIONS
 {
-    . = 0x1000;
+    . = 0x20000;
 
     .text : {
         *(.text)

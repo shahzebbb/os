@@ -24,8 +24,11 @@ $(BOOTLOADER_BIN): $(BUILD)
 	$(NASM) -f bin $(SRC)/bootloader.asm -o $@
 
 # === BUILD KERNEL BINARIES ===
-$(BUILD)/start.o: $(SRC)/start.asm
-	$(NASM) -f elf32 $< -o $@
+# $(BUILD)/start.o: $(SRC)/start.asm
+# 	$(NASM) -f elf32 $< -o $@
+
+$(BUILD)/start.o: $(SRC)/start.S
+	$(CC) -c -o $@ $< 
 
 $(BUILD)/kernel.o: $(SRC)/kernel.c
 	$(CC) -m32 -ffreestanding -c $< -o $@

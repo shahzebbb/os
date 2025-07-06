@@ -341,8 +341,8 @@ file_cluster:              dw 0
 root_dir_start             dw 0
 root_dir_size              db 0
 
-FILE_LOAD_SEGMENT          equ 0x0
-FILE_LOAD_OFFSET           equ 0x1000
+FILE_LOAD_SEGMENT          equ 0x2000
+FILE_LOAD_OFFSET           equ 0x0
 
 
 times 510 - ($ - $$) db 0  ; pad to 510 bytes
