@@ -184,7 +184,7 @@ load_file_into_memory:
 .load_loop:
     MOV ax, [file_cluster]
 
-    CALL convert_cluster_to_lba         ; Loads the sector number to load into AX
+    add ax, 31         ; Loads the sector number to load into AX
 
     MOV cl, 1
     MOV dl, [ebr_drive_number]

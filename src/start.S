@@ -3,6 +3,8 @@
 .section .text
 .globl start
 .extern kernel_main
+.extern __bss_start
+.extern __bss_end
 
 start:
     cli
@@ -21,8 +23,18 @@ start:
     mov $0x10, %eax
     mov %eax, %ds
     mov %eax, %ss
+    mov %eax, %es        
 
     mov $0x90000, %esp
+
+    cld                        
+    xor    %eax,%eax            
+
+    mov    $__bss_start,%edi        
+    mov    $__bss_end, %ecx   
+    sub    %edi, %ecx        
+    rep    stosb                   
+
     call kernel_main
 
 .hang:
@@ -77,8 +89,6 @@ load_gdt:
     data32 addr32 lgdt gdtdesc - 0x20000
     ret
 
-.section .data
-.align 8
 gdt:
 	.quad 0x0000000000000000	# Null segment.  Not used by CPU.
 	.quad 0x00cf9a000000ffff	# System code, base 0, limit 4 GB.

@@ -33,8 +33,11 @@ $(BUILD)/start.o: $(SRC)/start.S
 $(BUILD)/kernel.o: $(SRC)/kernel.c
 	$(CC) -m32 -ffreestanding -c $< -o $@
 
+$(BUILD)/vga.o: $(SRC)/vga.c
+	$(CC) -m32 -ffreestanding -c $< -o $@
+	
 # ==== LINK KERNEL BINARIES TOGETHER ===
-$(KERNEL_BIN): $(BUILD)/start.o $(BUILD)/kernel.o $(SRC)/linker.ld
+$(KERNEL_BIN): $(BUILD)/start.o $(BUILD)/kernel.o $(BUILD)/vga.o $(SRC)/linker.ld
 	$(LD) -m elf_i386 -T $(SRC)/linker.ld -o $@ $^
 
 # $(KERNEL_BIN): $(KERNEL_ELF)

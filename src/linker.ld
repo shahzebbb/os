@@ -10,11 +10,17 @@ SECTIONS
         *(.text)
     }
 
+    .rodata : {
+        *(.rodata*)
+    }
+
     .data : {
         *(.data)
     }
 
-    .bss : { 
-        *(.bss) 
+    .bss : {
+    __bss_start = .;
+    *(.bss)
+    __bss_end = .;
     }
 }
